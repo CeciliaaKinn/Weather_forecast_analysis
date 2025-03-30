@@ -3,7 +3,6 @@ from requests.auth import HTTPBasicAuth
 import os
 from dotenv import load_dotenv
 import json
-from dotenv import load_dotenv
 from shapely.wkt import loads
 
 class FrostClient:

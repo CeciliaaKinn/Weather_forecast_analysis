@@ -1,0 +1,5 @@
+pandas
+matplotlib
+dotenv
+shapely
+requests

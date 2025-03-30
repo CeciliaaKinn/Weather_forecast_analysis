@@ -1,20 +1,12 @@
-import sys 
-import os 
-
-# Find the absolute path to the project root
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-# Add the src folder to sys.path
-sys.path.append(os.path.join(project_root, 'src')) 
-
 from services.FrostClient import FrostClient
 from services.DataProcessingBase import DataProcessingBase
 
 
 class WindSpeedProcessing(DataProcessingBase):
     def __init__(self, lat, lon, d_from, d_to):
-        client = FrostClient()
-        station_id = client.getClosestWhetherStation(lat, lon)
-        self.wind_speed_raw = client.getWindSpeed(station_id, d_from, d_to)
+        super().__init__()
+        station_id = self.client.getClosestWhetherStation(lat, lon)
+        self.wind_speed_raw = self.client.getWindSpeed(station_id, d_from, d_to)
 
     def save_wind_speed(self): 
         element = "mean(wind_speed P1D)"

@@ -1,14 +1,13 @@
 import pandas as pd
-
-#class DataProcessingBase:
-#    def observation_to_df(self, json, element: str, fields: list[str]) -> pd.DataFrame:
-#        # TODO for loop with over the json file 
-#       pass
+import json
+from services.FrostClient import FrostClient
 
 
+class DataProcessingBase:
+    def __init__(self):
+        self.client = FrostClient()
+        
 
-
-class DataProcessingBase: 
     def observation_to_df(self, data: list, element: str) -> pd.DataFrame:
         rows = []
         for record in data:
@@ -23,3 +22,25 @@ class DataProcessingBase:
 
         return pd.DataFrame(rows, columns=["referenceTime", "value"])
     
+
+    def observation_to_json(self, data, elements=None):
+        if isinstance(elements, str): # Makes sure elements is given as a list
+            elements = [elements]
+            
+        json_data = json.loads(data)
+        
+        if elements is not None:
+            # If elements is specified, we only need the specified data
+            filtered_data = []
+
+            # Iterates throug every position in the JSON-data
+            for entry in json_data:
+                structured_data = {}
+                for el in elements:
+                    if el in entry:
+                        structured_data[el] = entry[el]
+                filtered_data.append(structured_data)
+
+            json_data = filtered_data
+
+        return json_data
