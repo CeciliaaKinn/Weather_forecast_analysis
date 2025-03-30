@@ -1,13 +1,19 @@
-import FrostClient
-import DataProcessingBase
+from src.services.FrostClient import FrostClient
+from src.services.DataProcessingBase import DataProcessingBase
+
+
 
 class WindSpeedProcessing(DataProcessingBase):
-    def __init__(self):
+    def __init__(self, lat, lon, d_from, d_to):
         client = FrostClient()
-        id = client.getClosestWhetherStation('59.9423', '10.72')
-        self.wind_speed_raw = client.getWindSpeed(id, '2024-04-01', '2024-06-01')
+        station_id = client.getClosestWhetherStation(lat, lon)
+        self.wind_speed_raw = client.getWindSpeed(station_id, d_from, d_to)
 
-    def save_wind_speed(self):
-        elements = None
-        fields = None
-        df = self.observation_to_df(self.wind_speed_raw, elements, fields)
+    def save_wind_speed(self): 
+        element = "mean(wind_speed P1D)"
+        df = self.observation_to_df(self.wind_speed_raw, element)
+
+        print(df.head())
+        df.to_csv("data/wind_speed.csv", index=False)
+
+  
