@@ -1,10 +1,10 @@
 import pandas as pd
 import json
-from src.services.FrostClient import FrostClient
+from services.FrostClient import FrostClient
 
 
 class DataProcessingBase:
-    def __inint__(self):
+    def __init__(self):
         self.client = FrostClient()
         
 

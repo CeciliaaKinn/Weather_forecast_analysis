@@ -1,4 +1,4 @@
-from src.services.WindSpeedProcessing import WindSpeedProcessing
+from services.WindSpeedProcessing import WindSpeedProcessing
 
 
 def main():
