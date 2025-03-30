@@ -65,7 +65,6 @@ class FrostClient:
     
 
     def getLightning(self, d_from, d_to, lon, lat, radius):
-        
         params = {
             'referencetime': f'{d_from}/{d_to}',
             'maxage': '',
@@ -97,16 +96,9 @@ class FrostClient:
                 
                 # Create a dictionary mapping header names to the values
                 data_dict = dict(zip(headers, values))
-                
-                # Extract relevant data and structure it into the required format
-                structured_data = {
-                    'date': f"{data_dict['year']}-{data_dict['month']}-{data_dict['day']}",  # Date in YYYY-MM-DD format
-                    'time': f"{data_dict['hour']}:{data_dict['minute']}:{data_dict['second']}",  # Time in HH:MM:SS format
-                    'position': f"{float(data_dict['latitude'])}, {float(data_dict['longitude'])}"
-                }
-                
-                # Add the structured data to the list
-                data_list.append(structured_data)
+                    
+                # Add the entire data_dict to the data_list (no modification)
+                data_list.append(data_dict)
 
             # Convert the list of dictionaries to JSON
             json_data = json.dumps(data_list, indent=4)
