@@ -1,6 +1,13 @@
-from src.services.FrostClient import FrostClient
-from src.services.DataProcessingBase import DataProcessingBase
+import sys 
+import os 
 
+# Find the absolute path to the project root
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+# Add the src folder to sys.path
+sys.path.append(os.path.join(project_root, 'src')) 
+
+from services.FrostClient import FrostClient
+from services.DataProcessingBase import DataProcessingBase
 
 
 class WindSpeedProcessing(DataProcessingBase):

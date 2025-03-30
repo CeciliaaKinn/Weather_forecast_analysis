@@ -15,15 +15,15 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 # Add the src folder to sys.path
 sys.path.append(os.path.join(project_root, 'src')) 
 
-from src.services.WindSpeedProcessing import WindSpeedProcessing 
-from src.services.AirTemperatureProcessing import AirTemperatureProcessing 
+from services.WindSpeedProcessing import WindSpeedProcessing 
+from services.FrostClient import FrostClient 
 
 class DataPreparation: 
 
     """
     This class finds missing values, duplicates etc. and handles the missing values"""
 
-    def __init__(self):
+    def __init__(self, lat, lon, d_from, d_to):
         #load_dotenv()
         #self.client_id = os.environ['CLIENTID']
         #self.client_credentials = os.environ['CLIENTCREDENTIALS']
@@ -32,19 +32,24 @@ class DataPreparation:
         # Sjekk at variablene er lastet riktig
         self.client_id = os.getenv('CLIENTID')
         self.client_credentials = os.getenv('CLIENTCREDENTIALS')
-        self.get_data = WindSpeedProcessing()
+
+        client = FrostClient()
+        station_id = client.getClosestWhetherStation(lat, lon)
+        self.wind_speed_raw = client.getWindSpeed(station_id, d_from, d_to)
 
 
-    def fetch_data(self, elements, referencetime): 
+    def fetch_data(self, lat, lon, d_from, d_to): 
         """
         Get weather data from GetData and saves in self.data. 
         Parameter elements: elements like temperature and wind speed. 
         Parameter referencetime: time interval for the data. 
 
         """ 
-        self.data = self.save_wind_speed(elements, referencetime)
+        client = FrostClient()
+        station_id = client.getClosestWhetherStation(lat, lon)
+        self.get_data = client.getWindSpeed(station_id, d_from, d_to)
 
-        if self.data is not None: 
+        if self.get_data is not None: 
             print('Data is fetched and saved.')
 
         else: 
@@ -52,23 +57,23 @@ class DataPreparation:
 
 
     def preview_data(self, n = 10): 
-        if self.data is not None: 
-            return self.data.head(n) # Shows the first 10 rows of the data
+        df_data = pd.DataFrame(self.get_data)
+        if self.get_data is not None: 
+        #return self.get_data[:n]
+            return df_data.head(n) # Shows the first 10 rows of the data. ## Hvis man har en dataframe. 
         else: 
             print('No data')
             return None 
     
         
-    def display_monthly_average(self, elements, referencetime): 
+    def display_monthly_average(self): 
         """
         Shows monthly average values for given elements 
 
         """ 
 
-        self.fetch_data(elements, referencetime)
-
-        if self.data is not None: 
-            print(self.data)
+        if self.get_data is not None: 
+            print(self.get_data)
 
         else: 
             print('No data found')
@@ -77,7 +82,7 @@ class DataPreparation:
         """
         Get data and save as csv-file"""
 
-        self.get_data.get_csv_data(elements, referencetime)
+        self.get_data.save_wind_speed(elements, referencetime)
         print('Data saved as csv')
 
 
@@ -86,8 +91,9 @@ class DataPreparation:
         Identifies missing values. 
         """
 
-        if self.data is not None: 
-            missing_values = self.data.isnull().sum()
+        if self.get_data is not None: 
+            df_data = pd.DataFrame(self.get_data)
+            missing_values = df_data.isnull().sum()
             return missing_values
         else: 
             print('No data')
@@ -100,18 +106,20 @@ class DataPreparation:
 
         # Identifying numerical columns
 
-        numerical_columns = [column for column in self.data.columns if np.issubdtype(self.data[column].dtype, np.number)]
+        df_data = pd.DataFrame(self.get_data)
+
+        numerical_columns = [column for column in df_data.columns if np.issubdtype(df_data[column].dtype, np.number)]
         
         # Missing values in numerical columns
 
-        missing_columns = [column for column in numerical_columns if self.data[column].isnull().any()]
-        missing_values = {column: self.data[column].isnull().sum() for column in missing_columns}
+        missing_columns = [column for column in numerical_columns if df_data[column].isnull().any()]
+        missing_values = {column: df_data[column].isnull().sum() for column in missing_columns}
 
         # Identifying non-numerical columns
-        non_numerical_columns = [column for column in self.data.columns if column not in numerical_columns]
+        non_numerical_columns = [column for column in df_data.columns if column not in numerical_columns]
 
         # Missing values in non-numerical columns (empty strings)
-        non_numerical_missing = {column: (self.data[column] == '').sum() for column in non_numerical_columns}
+        non_numerical_missing = {column: (df_data[column] == '').sum() for column in non_numerical_columns}
 
         return missing_values, non_numerical_missing
     
@@ -123,7 +131,7 @@ class DataPreparation:
         """
 
         # Creates masks for all columns. 
-        masked_data = {column: self.data[column] == '' for column in self.data.columns}
+        masked_data = {column: self.get_data[column] == '' for column in self.get_data.columns}
         
         # Preview of the first 5 rows in each mask. 
         for name, mask in masked_data.items():
@@ -135,20 +143,40 @@ class DataPreparation:
         df = pd.DataFrame(self)
 
         # Creates a matrix that shows where misssing values are located. 
-        print(msno.matrix(self.data)) 
+        print(msno.matrix(self.get_data)) 
         
         # Creates a bar plot that shows the non-missing values for each column in the dataset. 
         # Identifies the completeness of the data. 
-        print(msno.bar(self.data)) 
+        print(msno.bar(self.get_data)) 
 
         # Making a heatmap that visualize the correlation of missing values 
         print(msno.heatmap(df))
-
-
     
     
-    """def find_duplicates(self, # hva vi anser som duplikater#): 
-                        rerturn duplicates """
+    def find_duplicates(self): 
+        data = self.get_data 
+
+        df_data = pd.DataFrame(data)
+        df_data[df_data.duplicated()]
+        # Total number of rows
+        print("Total number of rows:", data.shape[0])
+        
+        #Find the number of duplicates
+        print("Number of duplicates:", data.duplicated().sum())
+        
+        # Find the number of duplicates on the basis of title
+        data_duplicated_title = data[data.duplicated(subset=["Title"])]
+        print("Number of duplicates on the basis of title:", slm_duplicated_title["Title"].sum())
+        
+        # Find the duplicates on the basis of title
+        for index, row in slm_duplicated_title.iterrows():
+            print("Title:", row["Title"], ", Publication Year:", row["Publication Year"], ", Database:", row["Database"])
+            
+        # Find the number of each duplicated title
+        print("Number of each duplicated title:")
+        print(data_duplicated_title["Title"].value_counts())
+        
+                        
     
     """def handle_duplicates: 
 """
