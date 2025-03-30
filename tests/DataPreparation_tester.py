@@ -36,8 +36,15 @@ data = data_fetcher.fetch_data(lat, lon, d_from, d_to)
 preview_data = data_fetcher.preview_data(data)
 missing_data = data_fetcher.identify_missing_values()
 missing_data2 = data_fetcher.find_missing_data()
+visualize = data_fetcher.visualize_missing_data()
+duplicates = data_fetcher.find_duplicates()
+
 
 # Print the results
 print(preview_data)
 print(missing_data)
 print(missing_data2)
+print(visualize)
+print(duplicates)
+
+

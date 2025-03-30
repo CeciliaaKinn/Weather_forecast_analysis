@@ -9,6 +9,8 @@ from dotenv import load_dotenv
 import sys 
 import os
 
+## We have no missing values, but we are planning to make a copy of the data 
+## and remove data, add duplicates and make outliers. 
 
 # Find the absolute path to the project root
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -140,51 +142,54 @@ class DataPreparation:
         return masked_data
     
     def visualize_missing_data(self): 
-        df = pd.DataFrame(self)
+        df_data = pd.DataFrame(self.get_data)
 
         # Creates a matrix that shows where misssing values are located. 
-        print(msno.matrix(self.get_data)) 
+        print(msno.matrix(df_data)) 
         
         # Creates a bar plot that shows the non-missing values for each column in the dataset. 
         # Identifies the completeness of the data. 
-        print(msno.bar(self.get_data)) 
+        print(msno.bar(df_data)) 
 
         # Making a heatmap that visualize the correlation of missing values 
-        print(msno.heatmap(df))
+        print(msno.heatmap(df_data))
     
     
-    def find_duplicates(self): 
-        data = self.get_data 
+    def find_duplicates(self, subset = 'value'): 
+        df_data = pd.DataFrame(self.get_data)
 
-        df_data = pd.DataFrame(data)
-        df_data[df_data.duplicated()]
+        if 'observation' in df_data.columns:
+            df_data['value'] = df_data['observations'].apply(lambda x: x[2]['value'] if isinstance(x, list) and len(x) > 2 else None)
+            duplicates = df_data[df_data.duplicated(subset=subset)]
+            print(duplicates)
+            
+            df_data_no_duplicates = df_data.drop_duplicates(subset=subset)
+            return df_data_no_duplicates
+        
+        else:
+            return None
+        #df_data[df_data.duplicated(subset = 'Value')]
+
         # Total number of rows
-        print("Total number of rows:", data.shape[0])
+        #print("Total number of rows:", df_data.shape[0])
         
         #Find the number of duplicates
-        print("Number of duplicates:", data.duplicated().sum())
+        #print("Number of duplicates:", df_data.duplicated(subset = 'Value').sum())
         
         # Find the number of duplicates on the basis of title
-        data_duplicated_title = data[data.duplicated(subset=["Title"])]
-        print("Number of duplicates on the basis of title:", slm_duplicated_title["Title"].sum())
-        
-        # Find the duplicates on the basis of title
-        for index, row in slm_duplicated_title.iterrows():
-            print("Title:", row["Title"], ", Publication Year:", row["Publication Year"], ", Database:", row["Database"])
-            
-        # Find the number of each duplicated title
-        print("Number of each duplicated title:")
-        print(data_duplicated_title["Title"].value_counts())
-        
+       # data_duplicated_title = df_data[df_data.duplicated(subset=["Title"])]
+       # print("Number of duplicates on the basis of title:", data_duplicated_title["Value"].sum())
+                    
+        # Find the number of each duplicated value
+        #print("Number of each duplicated value:")
+        #print(data_duplicated_title["Value"].value_counts())
+
+        #df_data = df_data.drop_duplicates(subset=["value"], keep='first')
                         
     
     """def handle_duplicates: 
 """
     
-    
-
-
-
 
 
   
@@ -212,7 +217,7 @@ class DataPreparation:
         4. Backward fill: changes missing value with the value after. 
         5. Interpolate: 
         6. Mean: changes missing value with mean. 
-        7. Median: 
+        7. Median: changes missing value with median. 
         """
         if strategy == 'drop': # Removes the column with the missing value. 
             self.data.dropna(subset = [column]) if column else self.data.dropna()
@@ -287,7 +292,7 @@ class DataPreparation:
 
     ## Må se mer på denne. Hvordan gjøre slik at den kan håndtere alle tilfellene f.eks.     
     # SQL query. Can select, insert, update, delete or create data. 
-   # def execute_sql_query(self, query):
+    #def execute_sql_query(self, query):
           """Denne funksjonen tar en SQL-spørring som input og utfører den på
           de lokale variablene (DataFrames) ved hjelp av pandasql.
           
