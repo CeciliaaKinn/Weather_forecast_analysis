@@ -28,7 +28,7 @@ class DataProcessingBase:
             elements = [elements]
             
         json_data = json.loads(data)
-        
+       
         if elements is not None:
             # If elements is specified, we only need the specified data
             filtered_data = []

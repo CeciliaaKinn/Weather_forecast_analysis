@@ -52,7 +52,7 @@ class FrostClient:
             pass
     
 
-    def getPolygon(self, lon, lat, radius):
+    def getPolygon(self, lat, lon, radius):
         # Decides the area for observtions
         lon_min = str(round(float(lon) - radius, 6))
         lon_max = str(round(float(lon) + radius, 6))
@@ -63,13 +63,13 @@ class FrostClient:
         return polygon
     
 
-    def getLightning(self, d_from, d_to, lon, lat, radius):
+    def getLightning(self, lat, lon, d_from, d_to, radius):
         params = {
             'referencetime': f'{d_from}/{d_to}',
             'maxage': '',
-            'geometry': self.getPolygon(lon, lat, radius),
+            'geometry': self.getPolygon(lat, lon, radius),
         }
-
+        
         r = requests.get(
             'https://frost.met.no/lightning/v0.jsonld',
             params=params,
@@ -107,6 +107,7 @@ class FrostClient:
             print(f"Message: {r.json()['error']['message']}")
             print(f"Reason: {r.json()['error']['reason']}")
             return None
+
 
 if __name__ == '__main__':
     client = FrostClient()
