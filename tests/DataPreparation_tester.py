@@ -38,6 +38,10 @@ missing_data = data_fetcher.identify_missing_values()
 missing_data2 = data_fetcher.find_missing_data()
 visualize = data_fetcher.visualize_missing_data()
 duplicates = data_fetcher.find_duplicates()
+handle_missing = data_fetcher.handle_missing_values()
+find_outliers = data_fetcher.find_outliers('value')
+find_outliers_iqr = data_fetcher.find_outliers_iqr()
+
 
 
 # Print the results
@@ -46,5 +50,10 @@ print(missing_data)
 print(missing_data2)
 print(visualize)
 print(duplicates)
+print(handle_missing)
+print(find_outliers) 
+print(find_outliers_iqr)
+
+
 
 

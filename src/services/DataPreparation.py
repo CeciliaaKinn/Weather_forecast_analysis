@@ -168,31 +168,7 @@ class DataPreparation:
         
         else:
             return None
-        #df_data[df_data.duplicated(subset = 'Value')]
 
-        # Total number of rows
-        #print("Total number of rows:", df_data.shape[0])
-        
-        #Find the number of duplicates
-        #print("Number of duplicates:", df_data.duplicated(subset = 'Value').sum())
-        
-        # Find the number of duplicates on the basis of title
-       # data_duplicated_title = df_data[df_data.duplicated(subset=["Title"])]
-       # print("Number of duplicates on the basis of title:", data_duplicated_title["Value"].sum())
-                    
-        # Find the number of each duplicated value
-        #print("Number of each duplicated value:")
-        #print(data_duplicated_title["Value"].value_counts())
-
-        #df_data = df_data.drop_duplicates(subset=["value"], keep='first')
-                        
-    
-    """def handle_duplicates: 
-"""
-    
-
-
-  
 
     """def masked_data(element): 
         data = 
@@ -219,22 +195,35 @@ class DataPreparation:
         6. Mean: changes missing value with mean. 
         7. Median: changes missing value with median. 
         """
-        if strategy == 'drop': # Removes the column with the missing value. 
-            self.data.dropna(subset = [column]) if column else self.data.dropna()
+        df_data = pd.DataFrame(self.get_data)
+        if strategy == 'drop': # Removes the column with the missing value.
+            if column:  
+                df_data.dropna(subset = [column])
+            else: 
+                df_data = df_data.dropna()
+
         elif strategy == 'fill':  # Change the missing value with a chosen value. 
             if fill_value is not None: 
-                self.data = self.data.fillna(fill_value)
+                df_data = df_data.fillna(fill_value)
             else: 
                 raise ValueError("fill_value must be provided when strategy is 'fill'")
-        elif strategy == 'forward_fill': # Change the missing value with the value before.  
-            self.data = self.data.ffill() 
+        elif strategy == 'forward_fill': # Change the missing value with the value before. 
+            df_data = df_data.ffill() 
         elif strategy == 'backward_fill': # Change the missing value with the value after. 
-            self.data = self.data.bfill()
-        #elif strategy == 'interpolate': 
-        #elif strategy == 'mean': 
-            #self.data = self.data.mean()
+            df_data = df_data.bfill()
+        elif strategy == 'interpolate': 
+            df_data = df_data.interpolate(method = 'linear', limit_direction = 'forward', axis = 0) 
+            print('Missing values interpolated')
+        elif strategy == 'mean': 
+            if column: 
+                mean_value = df_data[column].mean()
+                df_data[column] = df_data[column].fillna(mean_value)
+
+            else: 
+                raise ValueError('Column must be specified when strategy is mean')
+            
         else: 
-            raise ValueError("Choose between strategies: 'drop', 'fill', 'forward_fill', 'backward_fill', 'interpolate', 'mean'")
+            raise ValueError("Choose between strategies: 'drop', 'fill', 'forward_fill', 'backward_fill', 'interpolate' or 'mean'")
         
     
     def find_outliers(self, element): 
@@ -242,51 +231,60 @@ class DataPreparation:
         Function that finds outliers. Checking if the data is between chosen 
         upper and lower limits. The threshold is 3. 
 
-        """
 
-        df = pd.DataFrame(self.data, columns = [f'{element}'])
+        """
+        self.df = pd.read_csv('data/wind_speed.csv')
+
+        threshold = 3
+
+        lower_limit = self.df[element].mean() - threshold * self.df[element].std()
+        upper_limit = self.df[element].mean() + threshold * self.df[element].std()
+
+        outliers = self.df[self.df[element].between(lower_limit, upper_limit) == False]
+
+        #df = pd.DataFrame(self.get_data, columns = [f'{element}'])
 
         # Calculate lower and upper limits. 
 
-        threshold = 3
-        lower_limit = df[f'{element}'].mean() - threshold * df[f'{element}'].std()
-        upper_limit = df[f'{element}'].mean() + threshold * df[f'{element}'].std()
+        #threshold = 3
+        #lower_limit = df[f'{element}'].mean() - threshold * df[f'{element}'].std()
+        #upper_limit = df[f'{element}'].mean() + threshold * df[f'{element}'].std()
 
         # Outliers
-        outliers = df[df[f'{element}'].between(lower_limit, upper_limit) == False]
+        #outliers = df[df[f'{element}'].between(lower_limit, upper_limit) == False]
         
         return outliers 
-    
-    def find_outliers_iqr(self, threshold = 3): 
-        """
-        Using the IQR-method to identify the outliers. 
-        Parameters: 
-         - self
-         - threshold: to define the bounds for outliers. Defeault: 3. 
 
-        """ 
 
-        # First step: calculate Q1 (25 %) and Q2 (75 %). 
 
-        data_series = pd.Series(self.data)
-        q1 = data_series.quantile(0.25)
-        q3 = data_series.quantile(0.75)
+    def find_outliers_iqr(self, threshold=1.5):
 
-        # Calculate IQR. 
+        data = pd.read_csv('data/wind_speed.csv')
 
-        IQR = q3 - q1
+        values = pd.to_numeric(data['value'], errors='coerce')
 
-        # Bounds for the outliers
+        values = values.dropna()
 
-        lower_bound = q1 - threshold * IQR
-        upper_bound = q3 + threshold * IQR 
+        q1 = np.percentile(values, 25)
+        q3 = np.percentile(values, 75)
 
-        # Identifing the outliers 
+        iqr = q3 - q1
+
+        lower_bound = q1 - threshold * iqr
+        upper_bound = q3 + threshold * iqr
+
+
+        outliers = values[(values < lower_bound) | (values > upper_bound)]
+
+        print(values.head())
+        print(values.isna().sum())
+        print(f"Q1: {q1}, Q3: {q3}, IQR: {iqr}")
+
+
         
-        outliers = data_series[data_series.between(lower_bound, upper_bound)]
-
-        return outliers 
+        return outliers
     
+
     def binning_data(self): 
 
 
