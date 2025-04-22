@@ -8,9 +8,17 @@ import seaborn as sns # Used for visualizations
 from dotenv import load_dotenv
 import sys 
 import os
+#from sklearn.preprocessing import MinMaxScaler
+#from sklearn.preprocessing import StandardScaler
+#from sklearn.model_selection import train_test_split
 
-## We have no missing values, but we are planning to make a copy of the data 
-## and remove data, add duplicates and make outliers. 
+# Import libraries
+import pandas as pd # for dataframes
+import numpy as np  # for mathematical operations
+import matplotlib.pyplot as plt # for plotting
+import missingno as msno # for visualizing missing values
+
+## We have no missing values. We made a copy of the csv-file where we deleted and changed some of the values, and also made duplicates. 
 
 # Find the absolute path to the project root
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
@@ -88,7 +96,7 @@ class DataPreparation:
         print('Data saved as csv')
 
 
-    def identify_missing_values(self):
+    def identify_missing_values(self): 
         """
         Identifies missing values. 
         """
@@ -142,7 +150,7 @@ class DataPreparation:
         return masked_data
     
     def visualize_missing_data(self): 
-        df_data = pd.DataFrame(self.get_data)
+        df_data = pd.read_csv('data/data_missing_values.csv')
 
         # Creates a matrix that shows where misssing values are located. 
         print(msno.matrix(df_data)) 
@@ -153,6 +161,12 @@ class DataPreparation:
 
         # Making a heatmap that visualize the correlation of missing values 
         print(msno.heatmap(df_data))
+
+        # Making a plot to show where the missing values are. 
+        df_data["value"].plot()
+        
+        plt.xlim(1, 20)
+        plt.show()
     
     
     def find_duplicates(self, subset = 'value'): 
@@ -231,7 +245,6 @@ class DataPreparation:
         Function that finds outliers. Checking if the data is between chosen 
         upper and lower limits. The threshold is 3. 
 
-
         """
         self.df = pd.read_csv('data/wind_speed.csv')
 
@@ -242,16 +255,6 @@ class DataPreparation:
 
         outliers = self.df[self.df[element].between(lower_limit, upper_limit) == False]
 
-        #df = pd.DataFrame(self.get_data, columns = [f'{element}'])
-
-        # Calculate lower and upper limits. 
-
-        #threshold = 3
-        #lower_limit = df[f'{element}'].mean() - threshold * df[f'{element}'].std()
-        #upper_limit = df[f'{element}'].mean() + threshold * df[f'{element}'].std()
-
-        # Outliers
-        #outliers = df[df[f'{element}'].between(lower_limit, upper_limit) == False]
         
         return outliers 
 
@@ -280,16 +283,17 @@ class DataPreparation:
         print(values.isna().sum())
         print(f"Q1: {q1}, Q3: {q3}, IQR: {iqr}")
 
-
         
         return outliers
     
 
     def binning_data(self): 
+          
 
 
     ## Må se mer på denne. Hvordan gjøre slik at den kan håndtere alle tilfellene f.eks.     
     # SQL query. Can select, insert, update, delete or create data. 
+    
     #def execute_sql_query(self, query):
           """Denne funksjonen tar en SQL-spørring som input og utfører den på
           de lokale variablene (DataFrames) ved hjelp av pandasql.
@@ -326,4 +330,17 @@ class DataPreparation:
 
 
 ## Time series data processing 
-## signal processing - ikke nødvendigvis relevant 
+## signal processing - ikke nødvendigvis relevant. Kan prøve. 
+
+    #def time_series(self): 
+        ## Må også plotte her 
+        ## Dersom vi mangler datoer, må man fylle inn. 
+        ## Also print the modified dataset
+
+
+    #def scaling_data(self): 
+       # data = pd.read_csv('data/wind_speed.csv')
+       # print(data.head(10)) # Printing the data with missing values 
+       # data.interpolate(method = 'linear', inplace = True)
+       # print(data.head(10)) # Printing the data after filling in missing values 
+

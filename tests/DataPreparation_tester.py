@@ -8,8 +8,6 @@ sys.path.append(os.path.join(project_root, 'src'))
 
 from services.DataPreparation import DataPreparation
 
-# Instantiate the class
-
 lat = '59.9423'
 lon = '10.72'
 d_from = '2024-04-01'
@@ -20,19 +18,13 @@ data_fetcher = DataPreparation(lat, lon, d_from, d_to)
 # Can use any number and combination of the four
 elements = ['mean(air_temperature P1M)', 'mean(wind_speed P1M)', 'sum(precipitation_amount P1M)', 'mean(air_pressure_at_sea_level P1M)']
 
-# Date range
-referencetime = '2010-01-01/2010-12-31'  # Example
+# Date range example 
+referencetime = '2010-01-01/2010-12-31'  
 
 # Get the data in JSON format
 data = data_fetcher.fetch_data(lat, lon, d_from, d_to)
 
-# Display the monthly averages or sums for the requested elements
-#data_fetcher.display_monthly_average(lat, lon, d_from, d_to)
-
-#dp = DataPreparation(api_url = 'https://frost.met.no/observations/v0.jsonld')
-#dp.data = json_data 
-
-
+# Testing the functions 
 preview_data = data_fetcher.preview_data(data)
 missing_data = data_fetcher.identify_missing_values()
 missing_data2 = data_fetcher.find_missing_data()
@@ -43,16 +35,16 @@ find_outliers = data_fetcher.find_outliers('value')
 find_outliers_iqr = data_fetcher.find_outliers_iqr()
 
 
-
-# Print the results
+# Printing the results
 print(preview_data)
 print(missing_data)
 print(missing_data2)
-print(visualize)
 print(duplicates)
 print(handle_missing)
 print(find_outliers) 
 print(find_outliers_iqr)
+print(visualize)
+
 
 
 
