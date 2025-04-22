@@ -3,3 +3,13 @@ matplotlib
 dotenv
 shapely
 requests
+numpy 
+os 
+sys 
+seaborn 
+missingno
+json 
+sklearn 
+
+
+
