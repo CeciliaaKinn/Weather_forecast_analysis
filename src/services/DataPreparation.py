@@ -27,25 +27,55 @@ sys.path.append(os.path.join(project_root, 'src'))
 
 from services.WindSpeedProcessing import WindSpeedProcessing 
 from services.FrostClient import FrostClient 
+from services.DataProcessingBase import DataProcessingBase
 
 class DataPreparation: 
 
     """
     This class finds missing values, duplicates etc. and handles the missing values"""
 
-    def __init__(self, lat, lon, d_from, d_to):
-        #load_dotenv()
-        #self.client_id = os.environ['CLIENTID']
-        #self.client_credentials = os.environ['CLIENTCREDENTIALS']
+    def __init__(self, lat, lon, d_from, d_to, element='mean(wind_speed P1M)', csv_path = None, json_path = None): 
+        load_dotenv()
+        self.element = element
 
-        load_dotenv()  # Laster inn miljøvariablene fra .env-filen
-        # Sjekk at variablene er lastet riktig
-        self.client_id = os.getenv('CLIENTID')
-        self.client_credentials = os.getenv('CLIENTCREDENTIALS')
+        if csv_path: 
+            try:
+                self.df = pd.read_csv(csv_path)
+                self.df['referenceTime'] = pd.to_datetime(self.df['referenceTime'], errors='coerce')
+                print(self.df.head())
+            except pd.errors.EmptyDataError:
+                print("The file is empty or does not include valid values")
+        elif json_path: 
+            try: 
+                self.df = pd.read_json(json_path)
 
-        client = FrostClient()
-        station_id = client.getClosestWhetherStation(lat, lon)
-        self.wind_speed_raw = client.getWindSpeed(station_id, d_from, d_to)
+                self.df['referenceTime'] = pd.to_datetime(self.df[['year', 'month', 'day', 'hour', 'minute', 'second']].astype(str).agg('-'.join, axis = 1), format = '%Y-%m-%d-%H-%M-%S') 
+                self.df['value'] = pd.to_numeric(df['peak current'], errors = 'coerce')
+                self.df = self.df[['refernceTime', 'value']]
+
+                self.df = self.df.sort_values('referenceTime').reset_index(drop = True)
+
+                print(self.df.head())
+            except: 
+                print("The file is empty or does not include valid values")
+
+        else: 
+            self.client_id = os.getenv('CLIENTID')
+            self.client_credentials = os.getenv('CLIENTCREDENTIALS')
+            
+            client = FrostClient()
+            station_id = client.getClosestWhetherStation(lat, lon)
+            self.get_data = client.getWindSpeed(station_id, d_from, d_to)
+            
+            if self.get_data is not None:
+                processor = DataProcessingBase()
+                self.df = processor.observation_to_df(self.get_data, self.element)
+                self.df['referenceTime'] = pd.to_datetime(self.df['referenceTime'], errors='coerce')
+
+                
+            else: 
+                self.df = pd.DataFrame() # Empty DataFrame 
+
 
 
     def fetch_data(self, lat, lon, d_from, d_to): 
@@ -65,14 +95,15 @@ class DataPreparation:
         else: 
             print('No data was fetched')
 
+        self.df = pd.DataFrame(self.get_data) if self.get_data else None
 
-    def preview_data(self, n = 10): 
-        df_data = pd.DataFrame(self.get_data)
-        if self.get_data is not None: 
-        #return self.get_data[:n]
-            return df_data.head(n) # Shows the first 10 rows of the data. ## Hvis man har en dataframe. 
+
+
+    def preview_data(self, n = 10):
+        if self.df is not None: 
+            return self.df.head(n)
         else: 
-            print('No data')
+            print('No data found')
             return None 
     
         
@@ -82,120 +113,117 @@ class DataPreparation:
 
         """ 
 
-        if self.get_data is not None: 
-            print(self.get_data)
+        if self.df is not None: 
+            print(self.df)
 
         else: 
             print('No data found')
 
-    def save_data_as_csv(self, elements, referencetime): ## Trenger kanskje ikke denne dersom dataen lagres i getdata? Usikker på om man må gjøre det i denne klassen også. 
+            ### Den under er kanskje unødvendig. eventuelt legge inn i funksjonen som henter data. 
+
+    def save_data_as_csv(self, filename = 'data/wind_speed.csv'): 
         """
-        Get data and save as csv-file"""
+        Get data and save as csv-file 
+        
+        """
+        if self.df is not None: 
+            self.df.to_csv(filename, index = False)
+            print(f"Data is saved to {filename}")
 
-        self.get_data.save_wind_speed(elements, referencetime)
-        print('Data saved as csv')
-
+        else: 
+            print('No data to save')
 
     def identify_missing_values(self): 
         """
         Identifies missing values. 
+
         """
 
-        if self.get_data is not None: 
-            df_data = pd.DataFrame(self.get_data)
-            missing_values = df_data.isnull().sum()
-            return missing_values
+        if self.df is not None: 
+            return self.df.isnull().sum()
         else: 
             print('No data')
             return None
         
     def find_missing_data(self): 
 
-        """Another method for finding missing values.
-        Identifying missing columns and values"""
+        """
+        Another method for finding missing values.
+        Identifying missing columns and values. 
+        
+        """
+
+        columns_to_check = [col for col in self.df.columns if col != 'referenceTime']
 
         # Identifying numerical columns
 
-        df_data = pd.DataFrame(self.get_data)
+        numerical_columns = [column for column in columns_to_check if np.issubdtype(self.df[column].dtype, np.number)]
 
-        numerical_columns = [column for column in df_data.columns if np.issubdtype(df_data[column].dtype, np.number)]
         
         # Missing values in numerical columns
 
-        missing_columns = [column for column in numerical_columns if df_data[column].isnull().any()]
-        missing_values = {column: df_data[column].isnull().sum() for column in missing_columns}
+        missing_columns = [column for column in numerical_columns if self.df[column].isnull().any()]
+        missing_values = {column: self.df[column].isnull().sum() for column in missing_columns}
 
         # Identifying non-numerical columns
-        non_numerical_columns = [column for column in df_data.columns if column not in numerical_columns]
+        non_numerical_columns = [column for column in columns_to_check if column not in numerical_columns]
 
         # Missing values in non-numerical columns (empty strings)
-        non_numerical_missing = {column: (df_data[column] == '').sum() for column in non_numerical_columns}
+        non_numerical_missing = {column: (self.df[column] == '').sum() for column in non_numerical_columns}
 
         return missing_values, non_numerical_missing
     
     def mask_missing_values(self): 
-        """
-        Replacing missing values (NaN or empty strings) with a specific mask. 
-        The function also returns a masked version of the data. 
-
-        """
-
-        # Creates masks for all columns. 
-        masked_data = {column: self.get_data[column] == '' for column in self.get_data.columns}
-        
-        # Preview of the first 5 rows in each mask. 
-        for name, mask in masked_data.items():
-            print(name, mask[:5])
+        if self.df is None or self.df.empty: 
+            print('No data to mask')
+            return None 
+        masked_data = {}
+        for column in self.df.columns: 
+            if self.df[column].dtype == object: 
+                masked_data[column] = self.df[column] == ''
+            else: 
+                masked_data[column] = self.df[column].isna()
 
         return masked_data
+
     
     def visualize_missing_data(self): 
-        df_data = pd.read_csv('data/data_missing_values.csv')
+        if self.df is not None: 
+            # Creates a matrix that shows where misssing values are located. 
+            msno.matrix(self.df) 
+            plt.show()
 
-        # Creates a matrix that shows where misssing values are located. 
-        print(msno.matrix(df_data)) 
-        
-        # Creates a bar plot that shows the non-missing values for each column in the dataset. 
-        # Identifies the completeness of the data. 
-        print(msno.bar(df_data)) 
+            # Creates a bar plot that shows the non-missing values for each column in the dataset. 
+            # Identifies the completeness of the data. 
+            msno.bar(self.df)
+            plt.show()
+            
+            # Making a heatmap that visualize the correlation of missing values 
+            msno.heatmap(self.df)
+            plt.show()
+            
+            # Making a plot to show where the missing values are. 
+            self.df["value"].plot()
+            plt.xlim(1, 20)
+            plt.show()
 
-        # Making a heatmap that visualize the correlation of missing values 
-        print(msno.heatmap(df_data))
-
-        # Making a plot to show where the missing values are. 
-        df_data["value"].plot()
-        
-        plt.xlim(1, 20)
-        plt.show()
+        else: 
+            print('No data to visualize')
     
     
     def find_duplicates(self, subset = 'value'): 
-        df_data = pd.DataFrame(self.get_data)
-
-        if 'observation' in df_data.columns:
-            df_data['value'] = df_data['observations'].apply(lambda x: x[2]['value'] if isinstance(x, list) and len(x) > 2 else None)
-            duplicates = df_data[df_data.duplicated(subset=subset)]
+        if 'observation' in self.df.columns:
+            self.df['value'] = self.df['observations'].apply(lambda x: x[2]['value'] if isinstance(x, list) and len(x) > 2 else None)
+            duplicates = self.df[self.df.duplicated(subset=subset)]
             print(duplicates)
             
-            df_data_no_duplicates = df_data.drop_duplicates(subset=subset)
+            df_data_no_duplicates = self.df.drop_duplicates(subset=subset)
             return df_data_no_duplicates
         
         else:
             return None
+                
 
-
-    """def masked_data(element): 
-        data = 
-
-        numerical_columns = [column for column in data.dtype.names if np.issubdtype(data[column].dtype, np.number)]
-        missing_columns = [column for column in numerical_columns if np.any(np.isnan(data[column]))]    
-        missing_values = {column: np.sum(np.isnan(data[column])) for column in missing_columns}
-        non_numerical_columns = [column for column in data.dtype.names if column not in numerical_columns]
-        missing_values = {column: np.sum(data[column] == '') for column in non_numerical_columns}
-
-        #return """
-
-    
     # Function that handles missing values. 4 strategies: drop, fill, forward fill or backward fill. 
     def handle_missing_values(self, strategy = 'drop', column = None, fill_value = None): 
         """
@@ -209,133 +237,145 @@ class DataPreparation:
         6. Mean: changes missing value with mean. 
         7. Median: changes missing value with median. 
         """
-        df_data = pd.DataFrame(self.get_data)
+        if self.df is None: 
+            print('No data')
+            return None
+        
         if strategy == 'drop': # Removes the column with the missing value.
             if column:  
-                df_data.dropna(subset = [column])
+                self.df.dropna(subset = [column])
             else: 
-                df_data = df_data.dropna()
+                self.df = self.df.dropna()
 
         elif strategy == 'fill':  # Change the missing value with a chosen value. 
             if fill_value is not None: 
-                df_data = df_data.fillna(fill_value)
+                self.df.fillna(fill_value, inplace = True)
             else: 
                 raise ValueError("fill_value must be provided when strategy is 'fill'")
         elif strategy == 'forward_fill': # Change the missing value with the value before. 
-            df_data = df_data.ffill() 
+            self.df.ffill(inplace = True)
         elif strategy == 'backward_fill': # Change the missing value with the value after. 
-            df_data = df_data.bfill()
+            self.df.bfill(inplace = True)
         elif strategy == 'interpolate': 
-            df_data = df_data.interpolate(method = 'linear', limit_direction = 'forward', axis = 0) 
+            self.df.interpolate(method = 'linear', limit_direction = 'forward', axis = 0) 
             print('Missing values interpolated')
         elif strategy == 'mean': 
             if column: 
-                mean_value = df_data[column].mean()
-                df_data[column] = df_data[column].fillna(mean_value)
+                mean_value = self.df[column].mean()
+                self.df[column] = self.df[column].fillna(mean_value, inplace = True)
 
             else: 
                 raise ValueError('Column must be specified when strategy is mean')
+        elif strategy == 'median': 
+            if column: 
+                median_value = self.df[column].median()
+                self.df[column] = self.df[column].fillna(median_value, inplace = True)
+            else: 
+                raise ValueError('Column must be specified when strategy is median')
             
         else: 
             raise ValueError("Choose between strategies: 'drop', 'fill', 'forward_fill', 'backward_fill', 'interpolate' or 'mean'")
         
     
-    def find_outliers(self, element): 
+    def find_outliers(self, column = 'value', threshold=3): 
         """
         Function that finds outliers. Checking if the data is between chosen 
         upper and lower limits. The threshold is 3. 
 
         """
-        self.df = pd.read_csv('data/wind_speed.csv')
 
-        threshold = 3
 
-        lower_limit = self.df[element].mean() - threshold * self.df[element].std()
-        upper_limit = self.df[element].mean() + threshold * self.df[element].std()
-
-        outliers = self.df[self.df[element].between(lower_limit, upper_limit) == False]
+        if self.df is not None and column in self.df.columns: 
+            lower_limit = self.df[column].mean() - threshold * self.df[column].std()
+            upper_limit = self.df[column].mean() + threshold * self.df[column].std()
+            outliers = self.df[self.df[column].between(lower_limit, upper_limit) == False]
 
         
         return outliers 
 
 
-
-    def find_outliers_iqr(self, threshold=1.5):
-
-        data = pd.read_csv('data/wind_speed.csv')
-
-        values = pd.to_numeric(data['value'], errors='coerce')
-
-        values = values.dropna()
-
-        q1 = np.percentile(values, 25)
-        q3 = np.percentile(values, 75)
-
-        iqr = q3 - q1
-
-        lower_bound = q1 - threshold * iqr
-        upper_bound = q3 + threshold * iqr
-
-
-        outliers = values[(values < lower_bound) | (values > upper_bound)]
-
-        print(values.head())
-        print(values.isna().sum())
-        print(f"Q1: {q1}, Q3: {q3}, IQR: {iqr}")
-
+    def find_outliers_iqr(self, column = 'value', threshold=1.5):
         
-        return outliers
-    
+        if self.df is not None and column in self.df.columns: 
+            q1 = self.df[column].quantile(0.25)
+            q3 = self.df[column].quantile(0.75)
 
-    def binning_data(self): 
-          
+            iqr = q3 - q1
+
+            lower_bound = q1 - threshold*iqr
+            upper_bound = q3 + threshold*iqr 
+
+            return self.df[(self.df[column] < lower_bound)|self.df[column] > upper_bound]
+            
+        return None
 
 
-    ## Må se mer på denne. Hvordan gjøre slik at den kan håndtere alle tilfellene f.eks.     
-    # SQL query. Can select, insert, update, delete or create data. 
-    
-    #def execute_sql_query(self, query):
-          """Denne funksjonen tar en SQL-spørring som input og utfører den på
-          de lokale variablene (DataFrames) ved hjelp av pandasql.
+    def binning_data(self, column = 'value', bins = 5, labels = None): 
+        """
+        Bins values in given intervals. For example low, medium and high. 
           
-          Du kan bruke følgende SQL-funksjoner med denne funksjonen:
+        """
+        if self.df is not None and column in self.df.columns: 
+            if not hasattr(self, 'df') or self.df.empty:
+                print("No data")
+                return None
+            if labels is None: 
+                labels = [f"Bin{i+1}" for i in range(bins)]
+
+            self.df['binned'] = pd.cut(self.df[column], bins = bins, labels = labels)
+            print(self.df[['value', 'binned']].head())
+            return self.df
+        else: 
+          print('Data is not loaded or column missing.')
+          return None 
+        
+    def execute_sql_query(self, query): 
+        """
+        Executes a SQL-query on the DataFrame.
+
+        You can use the following SQL-functions:           
           
+    1. **SELECT**: Selects data from one or more DataFrames. 
+          - Example: "SELECT * FROM df"
+          - Selects all data from the DataFrame df. 
           
-    1. **SELECT**: Henter data fra en eller flere tabeller (DataFrames).
-          - Eksempel: "SELECT * FROM df"
-          - Henter alle radene fra DataFrame df.
+    2. **INSERT**: Inserts new data in a DataFrame.           
           
-    2. **INSERT**: Legger til nye data i en tabell (DataFrame).
-          - Merk: `sqldf` støtter ikke direkte `INSERT`, men du kan bruke Pandas-metoder for å legge til data i en DataFrame før du kjører spørringen.
-          
-          
-    3. **UPDATE**: Oppdaterer eksisterende data i en tabell (DataFrame).
-         
-         - Merk: `sqldf` støtter ikke direkte `UPDATE`, men du kan bruke Pandas-metoder for å oppdatere data etter at du har hentet dem.
+    3. **UPDATE**: 
+                
        
-       
-    4. **DELETE**: Sletter data fra en tabell (DataFrame).
+    4. **DELETE**: Deleting data from a DataFrame. 
        - Merk: `sqldf` har ikke en direkte `DELETE`, men du kan bruke `WHERE` for å filtrere dataene, og deretter oppdatere DataFrame.
        
-    5. **CREATE**: Oppretter en ny tabell (DataFrame).
-       - Du kan "opprette" en ny DataFrame ved å bruke en SQL-spørring, men den vil være en Pandas DataFrame i minnet, ikke en fysisk tabell i en database.
-    
-    Argumenter:
-    query (str): En SQL-spørring i form av en tekststreng som skal kjøres
-    
-    Returnerer:
-    DataFrame: Resultatet av SQL-spørringen som en Pandas DataFrame"""
+    5. **CREATE**: Creates a new DataFrame. 
+        
+    Returns: DataFrame. 
           
-         # return sqldf(query, locals()) ## Må se litt mer på hvordan vi bruker SQL.
+        """
+        if self.df is not None: 
+          return sqldf(query, {'df': self.df})
+        else: 
+          print('Data is not loaded.')
+          return None 
+        
+    
+    def time_series_data_processing(self, datetime_col = 'referenceTime', value_col = 'value', freq = 'D'): 
+        if datetime_col not in self.df.columns: 
+            print(f"The column {datetime_col} does not exist in the data")
+            return None 
+        
+        self.df[datetime_col] = pd.to_datetime(self.df[datetime_col], errors = 'coerce')
+        self.df.dropna(subset = [datetime_col], inplace = True)
+        self.df.sort_values(by = datetime_col, inplace = True)
+        self.df.set_index(datetime_col, inplace = True)
 
+        # Resample 
+        ts_df = self.df[[value_col]].resample(freq).mean()
 
-## Time series data processing 
-## signal processing - ikke nødvendigvis relevant. Kan prøve. 
+        self.df = ts_df
 
-    #def time_series(self): 
-        ## Må også plotte her 
-        ## Dersom vi mangler datoer, må man fylle inn. 
-        ## Also print the modified dataset
+        return ts_df
+
 
 
     #def scaling_data(self): 
@@ -343,4 +383,10 @@ class DataPreparation:
        # print(data.head(10)) # Printing the data with missing values 
        # data.interpolate(method = 'linear', inplace = True)
        # print(data.head(10)) # Printing the data after filling in missing values 
+
+    def get_prepared_data(self):
+        """
+        Returns the prepared data for analyzing and visualization. 
+        """
+        return self.df
 

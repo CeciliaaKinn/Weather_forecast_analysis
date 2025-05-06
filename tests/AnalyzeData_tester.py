@@ -10,7 +10,6 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(os.path.join(project_root, 'src'))
 
 from services.AnalyzeData import AnalyzeData
-from services.DataPreparation import DataPreparation 
 
 # Example of coordinates 
 lat = '59.9423'
@@ -19,9 +18,14 @@ d_from = '2024-04-01'
 d_to = '2024-06-01'
 
 # Data 
-data_fetcher = DataPreparation(lat, lon, d_from, d_to)
+data_fetcher = AnalyzeData(lat, lon, d_from, d_to)
 
 # Testing the functions 
+statistics = data_fetcher.statistics()
+
+# Printing the results 
+print(statistics)
+
 
 
 
