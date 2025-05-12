@@ -1,10 +1,10 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-import json
 from dataclasses import dataclass
 import matplotlib.dates as mdates
-from typing import List, Literal
+from typing import Literal
+import matplotlib.dates as mdates
 
 
 @dataclass
@@ -21,99 +21,123 @@ class DataInfo:
 
 
 class DataVisualizer:
-    def __init__(self, data_info: List[DataInfo]):  
-        self.data_info = {info.name: info for info in data_info}
-        self.data_frames = {
-            name: self.prepare_dataframe(self.load_data(info), info)
-            for name, info in self.data_info.items()
-        }
+
+    def __init__(self,
+                 data_frames: dict[str, pd.DataFrame],
+                 measurements: dict[str, list[Measurements]]):
+        self.data_frames = data_frames
+        self.data_info = measurements
 
 
-    def load_data(self, info: DataInfo) -> pd.DataFrame:
-        if info.file_type == 'csv':
-            return pd.read_csv(info.path)
-        if info.file_type == 'json':
-            with open(info.path) as f:
-                return pd.json_normalize(json.load(f))
-        raise ValueError(f'Invalid fileType: {info.file_type}')
-
-
-    def prepare_dataframe(self, df: pd.DataFrame, info: DataInfo) -> pd.DataFrame:
-        if {'year','month','day','hour','minute','second'}.issubset(df.columns):
-            ts_cols = ['year','month','day','hour','minute','second']
-            df['referenceTime'] = pd.to_datetime(df[ts_cols].astype(int))
-            df.drop(columns=ts_cols, inplace=True) 
-        elif 'referenceTime' not in df.columns:
-            raise ValueError(f'Invalid data structure')
-
-        df['referenceTime'] = pd.to_datetime(df['referenceTime'])
-
-        for m in info.measurements:
-            if m.name in df.columns:
-                df[m.name] = pd.to_numeric(df[m.name], errors='coerce')
-
-        return df.dropna(subset=['referenceTime']).set_index('referenceTime')
+    def get_title(self, data_name: str, col_name: str) -> str:
+        """ 
+        Returns the user friendly column name for the specified data collection (data_name)
+        """
+        return next(m.title for m in self.data_info[data_name] if m.name == col_name)
 
     
     def compress_datapoints(self, y_label, df: pd.DataFrame):
+        """
+        Find standard derivation and mean for data measurements per month
+        """
         df2 = df.reset_index()  
         df2['month'] = df2['referenceTime'].dt.to_period('M')
         return df2.groupby('month')[y_label].agg(['mean', 'std']).reset_index()
+             
 
-    def error_bands_line_plot(self, data_name, y_label):
-        title = next(m.title for m in self.data_info[data_name].measurements if m.name == y_label)
+    def error_bands_line_plot(self, data_name, y_column):
+        """
+        Plot standard derivation and mean of the y-values per month 
+        """
+        title = self.get_title(data_name, y_column)
 
         df = self.data_frames[data_name]
-        comp_df = self.compress_datapoints(y_label, df)
+        compressed_df = self.compress_datapoints(y_column, df)
         sns.set_theme(style='darkgrid')
         _, ax = plt.subplots(figsize=(12, 5))
         ax.set_title(f"{data_name}")
 
         ax.plot(
-            comp_df['month'].dt.to_timestamp(),
-            comp_df['mean'],
+            compressed_df['month'].dt.to_timestamp(),
+            compressed_df['mean'],
             label='Mean'
         )
         
         ax.fill_between(
-            comp_df['month'].dt.to_timestamp(),
-            comp_df['mean'] - comp_df['std'],
-            comp_df['mean'] + comp_df['std'],
+            compressed_df['month'].dt.to_timestamp(),
+            compressed_df['mean'] - compressed_df['std'],
+            compressed_df['mean'] + compressed_df['std'],
             label='Standard deviation',
             alpha=0.2
         )
-        ax.set_xlabel('Month')
+        ax.set_xlabel('month')
         ax.set_ylabel(title)
         ax.legend()
         plt.show()
+        return ax
 
 
-    def scatter_plot(self, data_name: str, y_label: str):
-            df = self.data_frames[data_name]
-            title = next(m.title for m in self.data_info[data_name].measurements if m.name == y_label)
+    def scatter_plot(self, data_name: str, y_column: str):
+        """
+        Draw a scatter plot of y-values over time for the specified data collection (data_name)
+        """
+        df = self.data_frames[data_name]
+        title = next(m.title for m in self.data_info[data_name] if m.name == y_column)
 
-            _, ax = plt.subplots(figsize=(12, 5))
-            sns.set_theme(style="whitegrid", palette="colorblind")
+        _, ax = plt.subplots(figsize=(12, 5))
+        sns.set_theme(style="darkgrid", palette="colorblind")
 
-            ax.scatter(df.index, df[y_label], alpha=0.6)
-            ax.set_title(f"{data_name}")
-            ax.set_xlabel("Time")
-            ax.set_ylabel(title)
-            ax.xaxis.set_major_locator(mdates.DayLocator())
-            ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d"))
-            plt.show()
-            return ax
+        ax.scatter(df.index, df[y_column], alpha=0.6)
+        ax.set_title(f"{data_name}")
+        ax.set_xlabel("time")
+        ax.set_ylabel(title)
+        ax.xaxis.set_major_locator(mdates.DayLocator())
+        ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m-%d"))
+        plt.show()
+        return ax
 
-     
-if __name__ == '__main__': 
-    measurements1 = [Measurements('peak current', 'Peak current (kA)')]
-    measurements2 = [Measurements('value', 'Wind speed (m/s)')]
-    di1 = DataInfo('Lightning', './data/lightning.json', 'json', measurements1)
-    di2 = DataInfo('Wind speed', './data/wind_speed.csv', 'csv', measurements2)
-    data_info = [di1, di2]
 
-   
-    dv = DataVisualizer([di1, di2])
-    dv.error_bands_line_plot('Wind speed', y_label='value')
-    dv.scatter_plot('Lightning', y_label='peak current')
+    def correlation_scatter(self,
+                            x_data_name: str, x_column: str,
+                            y_data_name: str, y_column: str,
+                            tolerance: str | pd.Timedelta = "5min"):
+        """
+        Show the correlation between the y and x data points 
+        It includes the uncertainty in the estimate of the regression
+        """
+        df_x = (self.data_frames[x_data_name][[x_column]]
+                .rename(columns={x_column: "x"})
+                .sort_index()
+                .reset_index())  
 
+        df_y = (self.data_frames[y_data_name][[y_column]]
+                .rename(columns={y_column: "y"})
+                .sort_index()
+                .reset_index())
+  
+        df = pd.merge_asof(df_x, df_y,
+                        on="referenceTime",
+                        direction="nearest",
+                        tolerance=pd.Timedelta(tolerance)) \
+            .dropna()
+        if df.empty:
+            print("No matches within the selected tolerance, try a larger window.")
+            return
+
+        r = df[["x", "y"]].corr().loc["x", "y"]
+
+        sns.set_theme(style="darkgrid", palette="colorblind")
+        _, ax = plt.subplots(figsize=(12, 5))
+        sns.regplot(data=df, x="x", y="y", ax=ax)
+
+        x_title = self.get_title(x_data_name, x_column)
+        y_title = self.get_title(y_data_name, y_column)
+        ax.set_xlabel(x_title)
+        ax.set_ylabel(y_title)
+        ax.set_title(
+            f"Relationship between {x_title} and {y_title} (r = {r:.2f})"
+        )
+        plt.tight_layout()
+        plt.show()
+        return ax
+    

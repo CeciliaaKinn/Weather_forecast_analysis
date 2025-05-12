@@ -1,5 +1,15 @@
+import pandas as pd
+from services.DataPreparation import DataPreparation
 from services.WindSpeedProcessing import WindSpeedProcessing
 from services.LightningProcessing import LightningProcessing
+
+from services.WindSpeedProcessing      import WindSpeedProcessing
+from services.LightningProcessing      import LightningProcessing
+from visualization.DataVisualizer      import (
+    DataVisualizer, 
+    Measurements, 
+    DataInfo
+    )
 
 
 def main():
@@ -27,6 +37,44 @@ def main():
 
     lp = LightningProcessing(lat, lon, d_from_lightning, d_to_lightning, radius)
     lp.save_lightning(['year' ,'month', 'day', 'hour', 'minute', 'second', 'peak current'])
+
+
+
+    # Use DataPreparation to load & clean the data
+    prep_wind = DataPreparation(
+        lat        = lat,
+        lon        = lon,
+        d_from     = d_from_windspeed,
+        d_to       = d_to_windspeed,
+        csv_path   = "./data/wind_speed.csv"
+    )
+    wind_df = prep_wind.get_prepared_data()
+
+    prep_light = DataPreparation(
+        lat       = lat,
+        lon       = lon,
+        d_from    = d_from_lightning,
+        d_to      = d_to_lightning,
+        json_path = "./data/lightning.json"
+    )
+    light_df = prep_light.get_prepared_data()
+
+    # Building the two dicts for visualization 
+    data_frames = {
+        "Wind speed": wind_df,
+        "Lightning": light_df,
+    }
+    measurements = {
+        "Wind speed": [Measurements("value", "wind speed (m/s)")],
+        "Lightning": [Measurements("peak current", "peak current (kA)")],
+    }
+
+
+    dv = DataVisualizer(data_frames, measurements)
+    dv.error_bands_line_plot("Wind speed", y_column="value")
+    dv.scatter_plot("Lightning", y_column="peak current")
+    dv.correlation_scatter("Wind speed", "value", "Lightning", "peak current", tolerance="72H")
+
 
 if __name__ == '__main__':
     main() 
