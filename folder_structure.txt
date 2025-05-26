@@ -5,8 +5,8 @@ Weather_forecast_analysis/
 │   ├── services/ 
 │   │   ├── __init__.py
 │   │   ├── AirTemperatureProcessing.py # Use Frost client to get data from API, Use file_manager to sava data
-│   │   ├── AnalyzeData.py #
-│   │   ├── DataPreparation.py # 
+│   │   ├── AnalyzeData.py # Statistics
+│   │   ├── DataPreparation.py # Preparing the data for analyzing and visualizing
 │   │   ├── DataProcessingBase.py # the shared logic between the processing classes
 │   │   ├── FrostClient.py #
 │   │   ├── LightningProcessing.py 
@@ -18,7 +18,7 @@ Weather_forecast_analysis/
 │
 ├── tests/ # Unit and integration tests
 │   ├── __init__.py
-│   ├── WindSpeedProcessing_tester.py
+│   ├── WindSpeedProcessing_tester.py 
 │   ├── AirTemperatureProcessing_tester.py
 │   ├── DataPreparation_tester.py
 │   └── .... # All files that is likely to fail, and can be smart to test.
