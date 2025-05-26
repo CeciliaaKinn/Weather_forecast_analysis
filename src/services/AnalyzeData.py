@@ -28,23 +28,7 @@ class AnalyzeData:
     def __init__(self, df):
         self.df = df.copy()
 
-    
-    def fetch_data(self, lat, lon, d_from, d_to): 
-        """
-        Get weather data from GetData and saves in self.data. 
-        Parameter elements: elements like temperature and wind speed. 
-        Parameter referencetime: time interval for the data. 
 
-        """ 
-        client = FrostClient()
-        station_id = client.getClosestWhetherStation(lat, lon)
-        self.get_data = client.getWindSpeed(station_id, d_from, d_to)
-
-        if self.get_data is not None: 
-            print('Data is fetched and saved.')
-
-        else: 
-            print('No data was fetched')
     # Function that finds the mean, median, standard deviation, minimum value and maximum value.
     
     def statistics(self, column = 'value'): 
@@ -115,8 +99,8 @@ class AnalyzeData:
         y_col = dependent variable (f.ex. wind speed). 
         
         """
-        self.df[x_col] = pd.to_numeric(df[x_col], errors = 'coerce')
-        self.df[y_col] = pd.to_numeric(df[y_col], errors = 'coerce')
+        self.df[x_col] = pd.to_numeric(self.df[x_col], errors = 'coerce')
+        self.df[y_col] = pd.to_numeric(self.df[y_col], errors = 'coerce')
         self.df.dropna(subset = [x_col, y_col], inplace = True)
 
         X = self.df[[x_col]].values
@@ -132,7 +116,7 @@ class AnalyzeData:
         mse = mean_squared_error(Y, y_pred)
 
         #Print 
-        print(f"Regression formula: {y_col} = {slope:.2f}*{x_col} + {intercept:.2f}")
+        print(f"Regression formula: {y_col} = {float(slope):.2f}*{x_col} + {float(intercept):.2f}")
         print(f"R^2-value:{r2:.3f}")
         print(f"Mean Squared Error: {mse:.3f}")
 

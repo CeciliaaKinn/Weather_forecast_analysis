@@ -13,7 +13,7 @@ sys.path.append(os.path.join(project_root, 'src'))
 from services.DataPreparation import DataPreparation 
 
 
-class DataPreparation_tester: 
+class DataPreparation_tester(unittest.TestCase): 
     def setUp(self):
         self.data_prep = DataPreparation(lat=60.0, lon=10.0, d_from="2025-01-01", d_to="2025-01-31")
 
@@ -42,9 +42,6 @@ class DataPreparation_tester:
 
     def test_visualize_missing_data(self): 
         self.data_prep.visualize_missing_data()
-
-
-        #### Må se mer på denne 
 
     def test_find_duplicates(self): 
         self.data_prep.df = self.data_prep.df.append(self.data_prep.df.isloc[0], ignore_index = True) # Gets the first row and adds a duplicate of the first row. 
@@ -85,10 +82,10 @@ class DataPreparation_tester:
     def test_get_prepared_data(self):
         prepared_data = self.data_prep.get_prepared_data()
         self.assertIsInstance(prepared_data, pd.DataFrame)
-        self.assertEqual(prepared_data.shape[0], 2) # Må endre på dennne. 
+        self.assertEqual(prepared_data.shape[0], 2) 
 
-    if __name__ == '__main__': 
-        unittest.main()
+if __name__ == '__main__': 
+    unittest.main()
 
 
 

@@ -22,7 +22,7 @@ elements = ['mean(air_temperature P1M)', 'mean(wind_speed P1M)', 'sum(precipitat
 # Get the data 
 csv_path = 'data/data_missing_values.csv'
 json_path = 'data/lightning.json'
-dp = DataPreparation(lat, lon, d_from, d_to, json_path = json_path)
+dp = DataPreparation(lat, lon, d_from, d_to, csv_path = csv_path)
 
 # Testing the functions 
 preview_data = dp.preview_data()
@@ -54,7 +54,7 @@ cleaned_df = dp.get_prepared_data()
 analyzer = AnalyzeData(cleaned_df)
 analyzer.statistics()
 analyzer.plot_distribution('value')
-analyzer.linear_regression('referencetime', 'value')
+analyzer.linear_regression('referenceTime', 'value') 
 
 
 

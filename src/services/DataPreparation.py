@@ -32,7 +32,11 @@ from services.DataProcessingBase import DataProcessingBase
 class DataPreparation: 
 
     """
-    This class finds missing values, duplicates etc. and handles the missing values"""
+    This class finds missing values, duplicates etc. and handles the missing values. It prepares the data for visualization 
+    and the following analyze. 
+    You can choose between a json- or csv-file.
+
+    """
 
     def __init__(self, lat, lon, d_from, d_to, element='mean(wind_speed P1M)', csv_path = None, json_path = None): 
         load_dotenv()
@@ -50,8 +54,8 @@ class DataPreparation:
                 self.df = pd.read_json(json_path)
 
                 self.df['referenceTime'] = pd.to_datetime(self.df[['year', 'month', 'day', 'hour', 'minute', 'second']].astype(str).agg('-'.join, axis = 1), format = '%Y-%m-%d-%H-%M-%S') 
-                self.df['value'] = pd.to_numeric(df['peak current'], errors = 'coerce')
-                self.df = self.df[['refernceTime', 'value']]
+                self.df['value'] = pd.to_numeric(self.df['peak current'], errors = 'coerce')
+                self.df = self.df[['referenceTime', 'value']]
 
                 self.df = self.df.sort_values('referenceTime').reset_index(drop = True)
 
@@ -77,7 +81,6 @@ class DataPreparation:
                 self.df = pd.DataFrame() # Empty DataFrame 
 
 
-
     def fetch_data(self, lat, lon, d_from, d_to): 
         """
         Get weather data from GetData and saves in self.data. 
@@ -100,6 +103,10 @@ class DataPreparation:
 
 
     def preview_data(self, n = 10):
+        """
+        Shows the first rows of the data to understand what the data looks like. 
+        
+        """
         if self.df is not None: 
             return self.df.head(n)
         else: 
@@ -119,19 +126,6 @@ class DataPreparation:
         else: 
             print('No data found')
 
-            ### Den under er kanskje unødvendig. eventuelt legge inn i funksjonen som henter data. 
-
-    def save_data_as_csv(self, filename = 'data/wind_speed.csv'): 
-        """
-        Get data and save as csv-file 
-        
-        """
-        if self.df is not None: 
-            self.df.to_csv(filename, index = False)
-            print(f"Data is saved to {filename}")
-
-        else: 
-            print('No data to save')
 
     def identify_missing_values(self): 
         """
@@ -188,6 +182,14 @@ class DataPreparation:
 
     
     def visualize_missing_data(self): 
+        """
+        Function that visualizes the missing data. 
+        1. Matrix of missing data location. 
+        2. Bar plot of non-missing values. 
+        3. Heatmap. 
+        4. Plot of missing values. 
+        
+        """
         if self.df is not None: 
             # Creates a matrix that shows where misssing values are located. 
             msno.matrix(self.df) 
@@ -211,20 +213,21 @@ class DataPreparation:
             print('No data to visualize')
     
     
-    def find_duplicates(self, subset = 'value'): 
-        if 'observation' in self.df.columns:
-            self.df['value'] = self.df['observations'].apply(lambda x: x[2]['value'] if isinstance(x, list) and len(x) > 2 else None)
-            duplicates = self.df[self.df.duplicated(subset=subset)]
-            print(duplicates)
-            
-            df_data_no_duplicates = self.df.drop_duplicates(subset=subset)
-            return df_data_no_duplicates
-        
-        else:
-            return None
-                
+    def find_duplicates(self, subset = 'referenceTime'): 
+        """
+        This function finds duplicates in the column 'referenceTime', and deletes the second precence. 
 
-    # Function that handles missing values. 4 strategies: drop, fill, forward fill or backward fill. 
+        """
+        if self.df is not None: 
+            duplicates = self.df[self.df.duplicated(subset = subset, keep = 'first')] # Keeps the first value of the duplicates
+            print("Duplicates found = ", duplicates)
+
+            df_data_no_duplicates = self.df.drop_duplicates(subset = subset) # Deletes the rest of the duplicates
+            return df_data_no_duplicates
+        else: 
+            print("No data loaded.")
+            return None 
+
     def handle_missing_values(self, strategy = 'drop', column = None, fill_value = None): 
         """
         Function that handles the missing values. 
@@ -247,29 +250,30 @@ class DataPreparation:
             else: 
                 self.df = self.df.dropna()
 
-        elif strategy == 'fill':  # Change the missing value with a chosen value. 
+        elif strategy == 'fill':  # Changes the missing value with a chosen value. 
             if fill_value is not None: 
                 self.df.fillna(fill_value, inplace = True)
             else: 
                 raise ValueError("fill_value must be provided when strategy is 'fill'")
-        elif strategy == 'forward_fill': # Change the missing value with the value before. 
+        elif strategy == 'forward_fill': # Changes the missing value with the value before. 
             self.df.ffill(inplace = True)
-        elif strategy == 'backward_fill': # Change the missing value with the value after. 
+        elif strategy == 'backward_fill': # Changes the missing value with the value after. 
             self.df.bfill(inplace = True)
         elif strategy == 'interpolate': 
             self.df.interpolate(method = 'linear', limit_direction = 'forward', axis = 0) 
             print('Missing values interpolated')
-        elif strategy == 'mean': 
+        elif strategy == 'mean': # Changes the missing value with the mean value. 
             if column: 
                 mean_value = self.df[column].mean()
-                self.df[column] = self.df[column].fillna(mean_value, inplace = True)
+                self.df[column] = self.df[column].fillna(mean_value)
 
             else: 
                 raise ValueError('Column must be specified when strategy is mean')
-        elif strategy == 'median': 
+        elif strategy == 'median':  # Changes the missing value with the median value. 
             if column: 
                 median_value = self.df[column].median()
-                self.df[column] = self.df[column].fillna(median_value, inplace = True)
+                self.df[column] = self.df[column].fillna(median_value)
+
             else: 
                 raise ValueError('Column must be specified when strategy is median')
             
@@ -286,7 +290,7 @@ class DataPreparation:
 
 
         if self.df is not None and column in self.df.columns: 
-            lower_limit = self.df[column].mean() - threshold * self.df[column].std()
+            lower_limit = self.df[column].mean() - threshold * self.df[column].std() 
             upper_limit = self.df[column].mean() + threshold * self.df[column].std()
             outliers = self.df[self.df[column].between(lower_limit, upper_limit) == False]
 
@@ -295,6 +299,11 @@ class DataPreparation:
 
 
     def find_outliers_iqr(self, column = 'value', threshold=1.5):
+
+        """
+        Using the iqr - method to find the outliers. Threshold = 1.5. 
+
+        """
         
         if self.df is not None and column in self.df.columns: 
             q1 = self.df[column].quantile(0.25)
@@ -338,17 +347,6 @@ class DataPreparation:
     1. **SELECT**: Selects data from one or more DataFrames. 
           - Example: "SELECT * FROM df"
           - Selects all data from the DataFrame df. 
-          
-    2. **INSERT**: Inserts new data in a DataFrame.           
-          
-    3. **UPDATE**: 
-                
-       
-    4. **DELETE**: Deleting data from a DataFrame. 
-       - Merk: `sqldf` har ikke en direkte `DELETE`, men du kan bruke `WHERE` for å filtrere dataene, og deretter oppdatere DataFrame.
-       
-    5. **CREATE**: Creates a new DataFrame. 
-        
     Returns: DataFrame. 
           
         """
@@ -368,21 +366,13 @@ class DataPreparation:
         self.df.dropna(subset = [datetime_col], inplace = True)
         self.df.sort_values(by = datetime_col, inplace = True)
         self.df.set_index(datetime_col, inplace = True)
-
-        # Resample 
-        ts_df = self.df[[value_col]].resample(freq).mean()
+ 
+        ts_df = self.df[[value_col]].resample(freq).mean() # Resample
 
         self.df = ts_df
 
         return ts_df
 
-
-
-    #def scaling_data(self): 
-       # data = pd.read_csv('data/wind_speed.csv')
-       # print(data.head(10)) # Printing the data with missing values 
-       # data.interpolate(method = 'linear', inplace = True)
-       # print(data.head(10)) # Printing the data after filling in missing values 
 
     def get_prepared_data(self):
         """
