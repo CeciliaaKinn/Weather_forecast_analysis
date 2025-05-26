@@ -17,7 +17,7 @@ class DataPreparation_tester(unittest.TestCase):
     def setUp(self):
         self.data_prep = DataPreparation(lat=60.0, lon=10.0, d_from="2025-01-01", d_to="2025-01-31")
 
-    
+
     def test_preview_data(self): 
         preview = self.data_prep.preview_data(5)
         self.assertIsInstance(preview, pd.DataFrame)
