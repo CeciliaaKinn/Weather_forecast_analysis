@@ -91,12 +91,10 @@ Weather_forecast_analysis/
 │   ├── _init_.py
 │   ├── unittest
 │   │   ├── AnalyzeData_test.py
-│   │   ├── DataPreparation_test.py
-│   │   └── DataVisualizer_test.py
+│   │   └── DataPreparation_test.py
 │   ├── AnalyzeData_tester.py
 │   ├── Tester_analyze_preparation.py
-│   ├── WindSpeedProcessing_tester.py 
-
+│   └── WindSpeedProcessing_tester.py 
 │
 ├── .env # In .gitignore. Here we store password and clientID
 ├── .gitignore # Ignores client id and client credentials from .env. It also contains everything from the data folder.
