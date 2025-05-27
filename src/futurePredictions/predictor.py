@@ -44,8 +44,30 @@ class WeatherPrediction:
 
         training_data_ws = WindSpeedProcessing(lat, lon, d_from_training, d_to)
         training_data_ws.save_wind_speed()
-        training_data_l = LightningProcessing(lat, lon, d_from_training, d_to, radius)
-        training_data_l.save_lightning()
+
+        repeats = (date_to - date_from).days // 30
+        d_to_final = d_to
+
+        for i in range(repeats):
+            d_from = date_from + timedelta(days=30 * i)
+            d_to_part = d_from + timedelta(days=30)
+
+            d_from_str = d_from.strftime("%Y-%m-%d")
+            d_to_str = d_to_part.strftime("%Y-%m-%d")
+
+            training_data_l = LightningProcessing(lat, lon, d_from_str, d_to_str, radius)
+            if i == 0:
+                training_data_l.save_lightning()
+            else:
+                training_data_l.add_lightning()
+
+        final_from = date_from + timedelta(days=30 * repeats)
+        if final_from < date_to:
+            training_data_l = LightningProcessing(lat, lon, final_from.strftime("%Y-%m-%d"), d_to_final, radius)
+            training_data_l.add_lightning()
+
+                
+
 
     def wind_speed_predictor(self, lat, lon, d_to):
         """
@@ -56,10 +78,10 @@ class WeatherPrediction:
         # Collect data for training
         self.collect_training_data(lat, lon, d_to)
         
-        df = pd.read_csv('wind_speed.csv') 
+        df = pd.read_csv('./data/wind_speed.csv') 
 
         # Giving the colums a more fitting name
-        columns = [f"-{29-i}d" for i in range(20)]+['+1d']  
+        columns = [f"-{29-i}d" for i in range(30)]+['+1d']  
 
         training_df = pd.DataFrame([
             df['value'].iloc[i:i+31].tolist()
@@ -87,7 +109,7 @@ class WeatherPrediction:
         regr.fit(X_train_scaled_df, y_train)
 
         # Predict on train set if wanted, indicates the model's precision     
-        predict_test_answer = str(input('Do you want to plot the test? y/n'))
+        predict_test_answer = str(input('Do you want to plot the test? (y/n)'))
 
         if predict_test_answer == 'y':
 
@@ -120,8 +142,11 @@ class WeatherPrediction:
         reference_data.save_wind_speed()
 
         # Making a dataframe of wind speed last 30d
-        df = pd.read_csv('wind_speed.csv')
-        reference_df = pd.DataFrame([df['value']], columns=columns)
+        df = pd.read_csv('./data/wind_speed.csv')
+        reference_df = pd.DataFrame(
+            [df['value'].tolist()], 
+            columns=[f"-{29-i}d" for i in range(30)]
+            )
         reference_df_scaled = pd.DataFrame(self.scaler.transform(reference_df), columns=reference_df.columns)
         
 
@@ -152,7 +177,7 @@ class WeatherPrediction:
         plt.xlabel("Time in days")
         plt.ylabel("Wind Speed in m/s")
         plt.xlim([0,7])
-        plt.ylim([0, 10])
+        plt.ylim([0, max(wind_speed_list_complete) + 1])
         plt.grid(True)
 
         plt.show()
@@ -168,7 +193,7 @@ class WeatherPrediction:
         self.collect_training_data(lat, lon, d_to, radius)
 
         # Reference data for training, wind speed
-        ws_df = pd.read_csv('wind_speed.csv') 
+        ws_df = pd.read_csv('./data/wind_speed.csv') 
         ws_training_df = pd.DataFrame([
             ws_df['value'].iloc[i:i+10].tolist()
         for i in range(len(ws_df) - 9)
@@ -181,20 +206,27 @@ class WeatherPrediction:
         with open("./data/lightning.json", "r") as f:
             lightning_data = json.load(f)
 
-        timestamps = [
-            datetime(
-                int(entry["year"]),
-                int(entry["month"]),
-                int(entry["day"]),
-                int(entry["hour"]),
-                int(entry["minute"]),
-                int(entry["second"])
-            ) for entry in lightning_data
-        ]
+        print(lightning_data[0])
+
+        timestamps = []
+        for entry in lightning_data:
+            try:
+                timestamp = datetime(
+                    int(entry["year"]),
+                    int(entry["month"]),
+                    int(entry["day"]),
+                    int(entry["hour"]),
+                    int(entry["minute"]),
+                    int(entry["second"])
+                )
+                timestamps.append(timestamp)
+            except KeyError:
+                pass
+
         ligthning_training_list = []
 
         date_from = datetime.strptime(ws_df['referenceTime'].iloc[0], "%Y-%m-%dT%H:%M:%S.000Z")
-        date_to = datetime.strptime(d_to, "%Y-%m-%dT%H:%M:%S.000Z")
+        date_to = datetime.strptime(d_to, "%Y-%m-%d")
 
         d_f = date_from
         d_t = date_from + timedelta(days=10)
@@ -258,7 +290,7 @@ class WeatherPrediction:
         reference_data.save_wind_speed()
 
         # Making a dataframe of wind speed last 30d
-        df = pd.read_csv('wind_speed.csv')
+        df = pd.read_csv('./data/wind_speed.csv')
         reference_df = pd.DataFrame([df['value']], columns=[f"-{i}d" for i in reversed(range(10))])
         reference_df_scaled = pd.DataFrame(self.scaler.transform(reference_df), columns=reference_df.columns)
         

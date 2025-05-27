@@ -71,16 +71,16 @@ def main():
         "Lightning": [Measurements("peak current", "peak current (kA)")],
     }
 
-    dv = DataVisualizer(data_frames, measurements)
-    dv.error_bands_line_plot("Wind speed", y_column="value")
-    dv.scatter_plot("Lightning", y_column="peak current")
-    dv.correlation_scatter("Wind speed", "value", "Lightning", "peak current", tolerance="72H")
+    #dv = DataVisualizer(data_frames, measurements)
+    #dv.error_bands_line_plot("Wind speed", y_column="value")
+    #dv.scatter_plot("Lightning", y_column="peak current")
+    #dv.correlation_scatter("Wind speed", "value", "Lightning", "peak current", tolerance="72H")
 
 
     # Use WeatherPrediction to predict future wind speed and number of lightning strikes
     wp = WeatherPrediction()
-    wp.wind_speed_predictor(lat, lon, d_to_windspeed)
-    wp.lightning_predictor(lat, lon, d_to_windspeed)
+    # wp.wind_speed_predictor(lat, lon, d_to_windspeed)
+    wp.lightning_predictor(lat, lon, d_to_windspeed, 0.2)
 
 
 

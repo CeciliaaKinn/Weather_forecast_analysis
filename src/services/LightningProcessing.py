@@ -15,4 +15,15 @@ class LightningProcessing(DataProcessingBase):
         with open('data/lightning.json', 'w') as f:
             json.dump(json_data, f, indent=4)
 
-  
+
+    def add_lightning(self, element = None):
+        new_json_data = self.observation_to_json(self.lightning_raw, element)
+        
+        with open('data/lightning.json', 'r') as f:
+            json_data = json.load(f)
+
+        all_json_data = json_data + new_json_data
+
+        # Lagre JSON-svaret i en fil
+        with open('data/lightning.json', 'w') as f:
+            json.dump(all_json_data, f, indent=4)

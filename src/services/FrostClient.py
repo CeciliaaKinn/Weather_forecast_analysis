@@ -63,7 +63,7 @@ class FrostClient:
         return polygon
     
 
-    def getLightning(self, lat, lon, d_from, d_to, radius):
+    def getLightning(self, lat, lon, d_from, d_to, radius = 1):
         params = {
             'referencetime': f'{d_from}/{d_to}',
             'maxage': '',
@@ -111,5 +111,5 @@ class FrostClient:
 
 if __name__ == '__main__':
     client = FrostClient()
-    id = client.getClosestWhetherStation('59.9423', '10.72')
-    print(client.getWindSpeed(id, '2024-04-01', '2024-06-01')) # SN18700
+    id = client.getClosestWhetherStation('60.3833', '5.3333')
+    print(client.getWindSpeed(id, '2024-04-01', '2024-05-01')) # SN18700
