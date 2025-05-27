@@ -12,16 +12,19 @@ from visualization.DataVisualizer import (
     DataInfo
     )
 
+import matplotlib.pyplot as plt
+plt.ion()
+
 
 def main():
     # Example parameters 
     lat = "60.3833"  # Coordinates: Bergen
     lon = "5.3333"
-    d_from_windspeed = "2023-04-01"  # Timeframe for wind speed
+    d_from_windspeed = "2023-04-01"  # Timeframe
     d_to_windspeed = "2024-05-01"
-    d_from_lightning = "2024-04-01"  # Timeframe for lightning
+    d_from_lightning = "2024-04-01"  # Timeframe
     d_to_lightning = "2024-05-01"
-    radius = 1  #  Radius for lightning observations
+    radius = 1  #  Radius for lightningobservations
 
     own_parameters = str(input("Do you want to choose own parameters? (y/n)"))
     if own_parameters == 'y':
@@ -38,6 +41,7 @@ def main():
 
     lp = LightningProcessing(lat, lon, d_from_lightning, d_to_lightning, radius)
     lp.save_lightning(['year' ,'month', 'day', 'hour', 'minute', 'second', 'peak current'])
+
 
 
     # Use DataPreparation to load & clean the data
@@ -59,8 +63,6 @@ def main():
     )
     light_df = prep_light.get_prepared_data()
 
-
-    # Use DataVisualizer to visualise the data in different forms
     # Building the two dicts for visualization 
     data_frames = {
         "Wind speed": wind_df,
@@ -71,19 +73,18 @@ def main():
         "Lightning": [Measurements("peak current", "peak current (kA)")],
     }
 
+
     dv = DataVisualizer(data_frames, measurements)
     dv.error_bands_line_plot("Wind speed", y_column="value")
     dv.scatter_plot("Lightning", y_column="peak current")
     dv.correlation_scatter("Wind speed", "value", "Lightning", "peak current", tolerance="72H")
 
 
-    # Use WeatherPrediction to predict future wind speed and number of lightning strikes
-    wp = WeatherPrediction()
-    wp.wind_speed_predictor(lat, lon, d_to_windspeed)
-    wp.lightning_predictor(lat, lon, d_to_windspeed)
-
+        # Use WeatherPrediction to predict future wind speed and number of lightning strikes
+   # wp = WeatherPrediction()
+    #wp.wind_speed_predictor(lat, lon, d_to_windspeed)
+    #wp.lightning_predictor(lat, lon, d_to_windspeed)
 
 
 if __name__ == '__main__':
     main() 
-
